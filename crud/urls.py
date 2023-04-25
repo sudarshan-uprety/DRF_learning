@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import RegisterView,PostView,LoginView,UserProfileView,ChangePasswordView
+from .views import RegisterView,PostView,LoginView,UserProfileView,ChangePasswordView,VotePostView,ReviewPostView
 
 
 app_name="task"
@@ -11,5 +11,7 @@ urlpatterns = [
     path('posts/',PostView.as_view(),name='post'),
     path('changepassword/',ChangePasswordView.as_view(),name='changepassword'),
     path('posts/<int:pk>',PostView.as_view(),name='post_details'),
+    path('vote/<int:pk>',VotePostView.as_view(),name='vote'),
+    path('review/<int:pk>',ReviewPostView.as_view(),name='review'),
 
 ]

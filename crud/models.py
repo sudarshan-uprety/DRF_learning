@@ -20,14 +20,19 @@ class User(AbstractUser):
     USERNAME_FIELD='email'
     REQUIRED_FIELDS=['name','phone','address','password']
 
-    
-
 
 
 class Post(models.Model):
-    email=models.CharField(max_length=255)
+    email=models.ForeignKey(User,on_delete=models.CASCADE,to_field='email')
     title=models.CharField(max_length=255)
     content=models.CharField(max_length=255)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now_add=True)
 
+
+class PostVote(models.Model):
+    post=models.ForeignKey(Post,on_delete=models.CASCADE,to_field='id')
+    email=models.ForeignKey(User,on_delete=models.CASCADE,to_field='email')
+    rating=models.IntegerField()
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)

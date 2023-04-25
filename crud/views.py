@@ -8,13 +8,16 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from django.contrib.auth import authenticate
 
-from .models import Post,User
+from .models import Post,User,PostVote
 
 from django.contrib.auth import get_user
 
-from .serializers import UserSerializer,PostSerializer,LoginSerializer,ProfileViewSerializer,ChangePasswordSerializer
+from .serializers import UserSerializer,PostSerializer,LoginSerializer,ProfileViewSerializer,ChangePasswordSerializer,VoteSerializer
 
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from django.db.models import Avg
+
 
 
 #Generating token manually
@@ -43,8 +46,7 @@ class RegisterView(generics.GenericAPIView):
         user.set_password(password)
         user.is_active=True
         user.save()
-        token=get_tokens_for_user(user)
-        return Response({"token":token,"success":"User registered successfully"},status=201)
+        return Response({"ststus":"User registered successfully"},status=201)
 
 
     
@@ -73,13 +75,11 @@ class PostView(generics.GenericAPIView):
 
 
     def post(self,request):
-        user=request.user
-        serializer=PostSerializer(data=request.data)
+        # user=request.user
+        serializer=PostSerializer(data=request.data,context={"request":request})
         serializer.is_valid(raise_exception=True)
         validated_data=serializer.validated_data
-        validated_data['email']=user.email
-        post=Post(**validated_data)
-        post.save()
+        post=serializer.create(validated_data)
         return Response({"success":"User post created"} ,status=200)
 
 
@@ -94,7 +94,6 @@ class PostView(generics.GenericAPIView):
                 return Response({"error":"post not found or you're not authorized "},status=403)
 
     
-
     def get(self,request):
         posts=Post.objects.filter(email=request.user.email).values('title','content','created_at')
         serializer=PostSerializer(posts,many=True)
@@ -126,3 +125,34 @@ class ChangePasswordView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"success":"Password changed successfully"})
+    
+
+
+class VotePostView(generics.GenericAPIView):
+    permission_classes=[IsAuthenticated]
+
+    def post(self,request,pk):
+        serializer=VoteSerializer(data=request.data,context={"request":request.user})
+        serializer.is_valid(raise_exception=True)
+        validated_data=serializer.validated_data
+        validated_data['email']=request.user.email
+        validated_data['pk']=pk
+        post=Post.objects.get(id=pk)
+        if not post:
+            return Response({"error":"Sorry post do not exist"})
+        post_already=PostVote.objects.get(email=request.user.email,post_id=pk)
+        if post_already:
+            return Response({"error":"Sorry you already voted in this post"})
+        serializer.save()
+        return Response({"success":"Voted successfully"})
+
+
+class ReviewPostView(generics.GenericAPIView):
+    
+    def get(self,request,pk):
+        post_vote=PostVote.objects.filter(post_id=pk)
+        if post_vote:
+            average_rating=post_vote.aggregate(Avg('rating'))['rating__avg']
+            return Response({"average_rating":average_rating})
+        else:
+            return Response({"error":"Sorry we do have have that post"})

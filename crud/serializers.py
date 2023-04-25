@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User,Post
+from .models import User,Post,PostVote
 from rest_framework.validators import UniqueValidator
 from django.utils import timezone
 
@@ -20,8 +20,6 @@ class UserSerializer(serializers.ModelSerializer):
         user=User.objects.create(
             name=validated_date['name'],email=validated_date['email'],
         )
-        user.set_password(validated_date['password'])
-        user.save()
         return user
 
 
@@ -52,11 +50,10 @@ class PostSerializer(serializers.ModelSerializer):
         return post
     
 class ProfileViewSerializer(serializers.ModelSerializer):
-    password=serializers.CharField()
-    password2=serializers.CharField(write_only=True)
+
     class Meta:
         model=User
-        fields=['email','name','phone','created_at','password','password2']
+        fields=['email','name','phone','address','created_at']
 
 
 class ChangePasswordSerializer(serializers.ModelSerializer):
@@ -77,3 +74,19 @@ class ChangePasswordSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+class VoteSerializer(serializers.ModelSerializer):
+    vote=serializers.IntegerField()
+
+    class Meta:
+        model = PostVote
+        fields=['vote']
+
+    def create(self,validated_data):
+        post=Post.objects.get(id=validated_data['pk'])
+        email=User.objects.get(email=validated_data['email'])
+        vote=PostVote.objects.create(
+            post=post,email=email,rating=validated_data['vote']
+        )
+        vote.save()
+        return vote
