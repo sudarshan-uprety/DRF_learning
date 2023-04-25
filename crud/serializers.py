@@ -62,14 +62,18 @@ class ProfileViewSerializer(serializers.ModelSerializer):
 class ChangePasswordSerializer(serializers.ModelSerializer):
     password=serializers.CharField(write_only=True)
     password2=serializers.CharField()
+
     class Meta:
-        model=User
-        fields=['password','password2']
-    
-    def validate(self,data):
-        user=self.context.get('user')
-        if data['password'] != data['password2']:
-            raise serializers.ValidationError("Password do not match")
-        user.set_password(data['password'])
+        model = User  # add this line
+        fields = ['password','password2']
+
+    def create(self, validated_data):
+        password=validated_data['password']
+        password2=validated_data['password2']
+        if password!=password2:
+            raise serializers.ValidationError("Password do not match.")
+        email=self.context['request'].user.email
+        user=User.objects.get(email=email)
+        user.set_password(password)
         user.save()
-        return data
+        return user

@@ -31,7 +31,6 @@ def get_tokens_for_user(user):
 class RegisterView(generics.GenericAPIView):
 
     def post(self,request):
-        print('hey')
         serializer=UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         password=serializer.validated_data['password']
@@ -68,60 +67,47 @@ class LoginView(generics.GenericAPIView):
 
 
 
-
-
 class PostView(generics.GenericAPIView):
 
-    authentication_classes = [BasicAuthentication]
-    permission_classes = []
+    permission_classes=[IsAuthenticated]
+
 
     def post(self,request):
-        user = request.user
-        if user.is_authenticated:
-            serializer=PostSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            validated_data=serializer.validated_data
-            validated_data['email']=user.email
-            post=Post(**validated_data)
-            post.save()
-            return Response({"success":"User post created"} ,status=200)
-        else:
-            return Response({"error":"Sorry not logged in"},status=400)
+        user=request.user
+        serializer=PostSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data=serializer.validated_data
+        validated_data['email']=user.email
+        post=Post(**validated_data)
+        post.save()
+        return Response({"success":"User post created"} ,status=200)
+
 
     def put(self,request,pk):
-        if request.user.is_authenticated:
-            try:
-                post=Post.objects.get(id=pk,email=request.user.email)
-                serializer=PostSerializer(post,data=request.data)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-                return Response(serializer.data)
-            except ObjectDoesNotExist:
+        try:
+            post=Post.objects.get(id=pk,email=request.user.email)
+            serializer=PostSerializer(post,data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        except ObjectDoesNotExist:
                 return Response({"error":"post not found or you're not authorized "},status=403)
-        else:
-            return Response({"error":"Something is wrong bro"},status=400)
 
     
 
     def get(self,request):
-        if request.user.is_authenticated:
-            posts=Post.objects.filter(email=request.user.email).values('title','content','created_at')
-            serializer=PostSerializer(posts,many=True)
-            return Response(serializer.data)
-        else:
-            return Response({"error":"Something is wrong bro"},status=400)
+        posts=Post.objects.filter(email=request.user.email).values('title','content','created_at')
+        serializer=PostSerializer(posts,many=True)
+        return Response(serializer.data)
         
     
     def delete(self, request, pk):
-        if request.user.is_authenticated:
-            try:
-                post = Post.objects.get(id=pk, email=request.user.email)
-                post.delete()
-                return Response({"message": "Post deleted successfully."}, status=204)
-            except ObjectDoesNotExist:
-                return Response({"error": "Post not found or you are not authorized to delete it."}, status=404)
-        else:
-            return Response({"error":"Authentication required."}, status=401)
+        try:
+            post = Post.objects.get(id=pk, email=request.user.email)
+            post.delete()
+            return Response({"message": "Post deleted successfully."}, status=204)
+        except ObjectDoesNotExist:
+            return Response({"error": "Post not found or you are not authorized to delete it."}, status=404)
 
 
 class UserProfileView(generics.GenericAPIView):
@@ -132,13 +118,11 @@ class UserProfileView(generics.GenericAPIView):
     
 
 
-
 class ChangePasswordView(generics.GenericAPIView):
     permission_classes=[IsAuthenticated]
+
     def post(self,request):
-        serializer=ChangePasswordSerializer(data=request.data,context={'user':request.user})
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response({"success":"password changed successfully"})
-        else:
-            return Response({"error":"Something went wrong"})
+        serializer=ChangePasswordSerializer(data=request.data,context={"request":request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"success":"Password changed successfully"})
