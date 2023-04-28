@@ -1,5 +1,5 @@
 from django.shortcuts import render,get_object_or_404
-from rest_framework import generics
+from rest_framework import generics,status
 from rest_framework.response import Response
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -16,7 +16,7 @@ from .serializers import UserSerializer,PostSerializer,LoginSerializer,ProfileVi
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from django.db.models import Avg
+from django.db.models import Avg,Count
 
 
 
@@ -147,12 +147,41 @@ class VotePostView(generics.GenericAPIView):
         return Response({"success":"Voted successfully"})
 
 
-class ReviewPostView(generics.GenericAPIView):
+
+class PostView(generics.GenericAPIView):
+
+    def get_client_ip(self,request):
+        x_forwarded_for=request.META.get('HTTP_X_FORWARDED_FOR')
+        print(x_forwarded_for)
+        if x_forwarded_for:
+            ip=x_forwarded_for.split(',')[-1].strip()
+        else:
+            ip=request.META.get('REMOTE_ADDR')
+        return ip
     
     def get(self,request,pk):
-        post_vote=PostVote.objects.filter(post_id=pk)
-        if post_vote:
-            average_rating=post_vote.aggregate(Avg('rating'))['rating__avg']
-            return Response({"average_rating":average_rating})
+        post=Post.objects.filter(id=pk).select_related('email').values('title','content','email','created_at')
+        if post:
+            self.get_client_ip(request)
+        return Response({"success":"Data","post_details":post})
+
+
+
+class ReviewPostView(generics.GenericAPIView):
+
+    def get(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+            print(post)
+        except Post.DoesNotExist:
+            return Response({"error": "Sorry we do not have that post."}, status=status.HTTP_404_NOT_FOUND)
+
+        post_votes = PostVote.objects.filter(post=post)
+        if post_votes:
+            ip = self.get_client_ip(request)
+            print(ip)
+            average_rating = post_votes.aggregate(Avg('rating'))['rating__avg']
+            views_count = post.views.count()
+            return Response({"average_rating": average_rating, "views_count": views_count})
         else:
-            return Response({"error":"Sorry we do have have that post"})
+            return Response({"error": "Sorry we do not have any votes for that post."}, status=status.HTTP_404_NOT_FOUND)

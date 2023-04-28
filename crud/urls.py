@@ -13,5 +13,7 @@ urlpatterns = [
     path('posts/<int:pk>',PostView.as_view(),name='post_details'),
     path('vote/<int:pk>',VotePostView.as_view(),name='vote'),
     path('review/<int:pk>',ReviewPostView.as_view(),name='review'),
+    path('view/<int:pk>',PostView.as_view(),name='review'),
+
 
 ]

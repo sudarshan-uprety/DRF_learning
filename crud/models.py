@@ -22,12 +22,21 @@ class User(AbstractUser):
 
 
 
+class IpAddress(models.Model):
+    ip=models.CharField(max_length=255)
+
+
+    def __str__(self):
+        return self.ip
+
+
 class Post(models.Model):
     email=models.ForeignKey(User,on_delete=models.CASCADE,to_field='email')
     title=models.CharField(max_length=255)
     content=models.CharField(max_length=255)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now_add=True)
+    views=models.ManyToManyField(IpAddress,blank=True)
 
 
 class PostVote(models.Model):
